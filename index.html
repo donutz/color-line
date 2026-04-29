@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where is the Line? | Blue vs Green</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        h1 { font-weight: 300; margin-bottom: 10px; }
+        p { opacity: 0.8; margin-bottom: 30px; }
+
+        /* The Color Display */
+        .spectrum-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            border-radius: 12px;
+            cursor: crosshair;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            /* Gradient from Green (140deg) to Blue (220deg) */
+            background: linear-gradient(to right, 
+                hsl(140, 100%, 50%), 
+                hsl(150, 100%, 50%),
+                hsl(160, 100%, 50%),
+                hsl(170, 100%, 50%),
+                hsl(180, 100%, 50%),
+                hsl(190, 100%, 50%),
+                hsl(200, 100%, 50%),
+                hsl(210, 100%, 50%),
+                hsl(220, 100%, 50%)
+            );
+            overflow: hidden;
+        }
+
+        /* The Dividing Line */
+        #divider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .label {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            pointer-events: none;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        #green-label { left: 10%; color: rgba(0,0,0,0.3); }
+        #blue-label { right: 10%; color: rgba(0,0,0,0.3); }
+
+        /* Results Section */
+        .results {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .hex-code {
+            font-family: monospace;
+            font-size: 1.5rem;
+            color: #00ffcc;
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Where does Green end and Blue begin?</h1>
+        <p>Click or drag on the spectrum to set your personal boundary.</p>
+
+        <div class="spectrum-container" id="spectrum">
+            <div id="green-label" class="label">Green</div>
+            <div id="blue-label" class="label">Blue</div>
+            <div id="divider"></div>
+        </div>
+
+        <div class="results">
+            <div>Your Boundary Color: <span id="hex-display" class="hex-code">#00FFD5</span></div>
+            <div class="stats">
+                Hue Angle: <span id="hue-display">170</span>° | 
+                Position: <span id="percent-display">50</span>%
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const spectrum = document.getElementById('spectrum');
+        const divider = document.getElementById('divider');
+        const hexDisplay = document.getElementById('hex-display');
+        const hueDisplay = document.getElementById('hue-display');
+        const percentDisplay = document.getElementById('percent-display');
+
+        function updateBoundary(e) {
+            const rect = spectrum.getBoundingClientRect();
+            let x = (e.clientX || e.touches[0].clientX) - rect.left;
+            
+            // Constrain to box
+            x = Math.max(0, Math.min(x, rect.width));
+            
+            const percentage = (x / rect.width) * 100;
+            
+            // Map percentage to Hue (140 is Green, 220 is Blue)
+            const hue = 140 + (percentage * 0.8);
+            
+            // Move Divider
+            divider.style.left = percentage + '%';
+            
+            // Update Text
+            const color = `hsl(${hue}, 100%, 50%)`;
+            hexDisplay.innerText = hslToHex(hue, 100, 50).toUpperCase();
+            hexDisplay.style.color = color;
+            hueDisplay.innerText = Math.round(hue);
+            percentDisplay.innerText = Math.round(percentage);
+        }
+
+        // Helper function to convert HSL to Hex
+        function hslToHex(h, s, l) {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        // Event Listeners
+        spectrum.addEventListener('mousedown', (e) => {
+            updateBoundary(e);
+            window.addEventListener('mousemove', updateBoundary);
+        });
+
+        window.addEventListener('mouseup', () => {
+            window.removeEventListener('mousemove', updateBoundary);
+        });
+
+        // Touch support
+        spectrum.addEventListener('touchstart', (e) => {
+            updateBoundary(e);
+            window.addEventListener('touchmove', updateBoundary);
+        });
+
+        window.addEventListener('touchend', () => {
+            window.removeEventListener('touchmove', updateBoundary);
+        });
+
+        // Initialize at center
+        updateBoundary({ clientX: spectrum.getBoundingClientRect().left + (spectrum.offsetWidth / 2) });
+    </script>
+</body>
+</html>
